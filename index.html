@@ -88,7 +88,7 @@ input[type=number],input[type=text]{
   font:600 15px "Roboto Mono",monospace;text-align:right;width:112px;
   padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--sumi);
 }
-input[type=text]{font-family:inherit;text-align:left;flex:1;width:auto}
+input[type=text]:not(.numpad){font-family:inherit;text-align:left;flex:1;width:auto}
 .stat{display:flex;gap:16px;font-size:12.5px;color:var(--ash);margin-top:4px}
 .stat b{display:block;font:700 17px "Roboto Mono",monospace;color:var(--sumi)}
 .modal-backdrop{position:fixed;inset:0;background:rgba(27,27,26,.4);display:flex;align-items:center;justify-content:center;padding:16px;z-index:100}
@@ -128,8 +128,8 @@ input[type=text]{font-family:inherit;text-align:left;flex:1;width:auto}
 
 <section>
   <div class="head"><h2>設定</h2><span id="saveState"></span></div>
-  <div class="row"><label for="goal">月の目標額</label><input id="goal" type="number" min="0" step="1000" inputmode="numeric"></div>
-  <div class="row"><label for="startDay">集計の開始日</label><input id="startDay" type="number" min="1" max="28" inputmode="numeric"></div>
+  <div class="row"><label for="goal">月の目標額</label><input id="goal" class="numpad" type="text" inputmode="numeric" pattern="[0-9]*"></div>
+  <div class="row"><label for="startDay">集計の開始日</label><input id="startDay" class="numpad" type="text" inputmode="numeric" pattern="[0-9]*"></div>
   <div class="row" style="gap:8px;padding-top:12px">
     <button class="key alt" id="exportBtn" style="flex:1;padding:11px">バックアップを書き出す</button>
     <button class="key alt" id="importBtn" style="flex:1;padding:11px">読み込む</button>
@@ -139,7 +139,7 @@ input[type=text]{font-family:inherit;text-align:left;flex:1;width:auto}
 
 <div id="freeDlg" class="modal-backdrop" hidden>
   <div class="modal">
-    <div class="row"><label for="freeAmt">金額</label><input id="freeAmt" type="number" min="0" step="10" inputmode="numeric"></div>
+    <div class="row"><label for="freeAmt">金額</label><input id="freeAmt" class="numpad" type="text" inputmode="numeric" pattern="[0-9]*"></div>
     <div class="row"><label for="freeMemo">メモ</label><input id="freeMemo" type="text" placeholder="スーパー / 昼食 など"></div>
     <button class="go" id="freeGo">記録する</button>
   </div>
