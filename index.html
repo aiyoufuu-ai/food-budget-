@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>食費メーター</title>
+<meta name="theme-color" content="#1F6F5C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="食費">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=Roboto+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F1EFE7;
+  --plate:#FFFFFF;
+  --sumi:#1B1B1A;
+  --tokiwa:#1F6F5C;
+  --shu:#D0432B;
+  --ash:#8E8A7E;
+  --line:#DAD5C7;
+  --shadow:0 2px 0 var(--line);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--paper);color:var(--sumi)}
+body{
+  font-family:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  font-weight:500;line-height:1.5;
+  padding:16px 16px calc(32px + env(safe-area-inset-bottom));
+  max-width:520px;margin:0 auto;
+}
+.num{font-family:"Roboto Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+h1{font-size:15px;font-weight:900;letter-spacing:.24em;margin-bottom:14px;color:var(--ash)}
+h1 b{color:var(--sumi)}
+
+/* 今日の枠 */
+.today{
+  background:var(--tokiwa);color:#F1EFE7;border-radius:14px;
+  padding:20px 20px 16px;margin-bottom:12px;position:relative;overflow:hidden;
+  transition:background .25s ease;
+}
+.today.over{background:var(--shu)}
+.today .label{font-size:12px;letter-spacing:.18em;font-weight:700;opacity:.85}
+.today .big{font-size:52px;font-weight:700;line-height:1.05;margin:6px 0 2px}
+.today .big small{font-size:22px;font-weight:500;opacity:.8;margin-right:2px}
+.today .sub{font-size:12.5px;opacity:.9}
+.bar{height:6px;border-radius:99px;background:rgba(255,255,255,.28);margin-top:14px;position:relative;overflow:hidden}
+.bar i{display:block;height:100%;background:#F1EFE7;border-radius:99px;transition:width .3s ease}
+.pace{position:absolute;top:-4px;width:2px;height:14px;background:#1B1B1A;opacity:.55}
+
+/* 券売機パッド */
+.pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.key{
+  background:var(--plate);border:1px solid var(--line);border-radius:12px;
+  box-shadow:var(--shadow);padding:14px 6px;font:700 19px/1 "Roboto Mono",monospace;
+  color:var(--sumi);cursor:pointer;transition:transform .06s,box-shadow .06s;
+}
+.key:active{transform:translateY(2px);box-shadow:none}
+.key.alt{font-family:inherit;font-size:14px;font-weight:700;color:var(--tokiwa);background:#EAEFEA}
+.key:focus-visible{outline:3px solid var(--tokiwa);outline-offset:2px}
+
+/* 明細 */
+section{background:var(--plate);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:12px}
+.head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.head h2{font-size:13px;font-weight:900;letter-spacing:.12em}
+.head span{font-size:12px;color:var(--ash)}
+ul{list-style:none}
+li{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+li:first-child{border-top:0}
+li .amt{margin-left:auto;font:700 15px "Roboto Mono",monospace}
+li button{background:none;border:0;color:var(--ash);font-size:17px;cursor:pointer;padding:2px 4px}
+.empty{color:var(--ash);font-size:13px;padding:6px 0}
+
+/* 日別グラフ */
+.chart{display:flex;align-items:flex-end;gap:3px;height:76px}
+.chart div{flex:1;background:var(--tokiwa);opacity:.75;border-radius:2px 2px 0 0;min-height:2px}
+.chart div.hi{background:var(--shu);opacity:1}
+.chart div.today-b{outline:2px solid var(--sumi);outline-offset:1px}
+.axis{display:flex;justify-content:space-between;font-size:10.5px;color:var(--ash);margin-top:6px}
+
+/* 設定 */
+.row{display:flex;align-items:center;gap:10px;padding:7px 0;font-size:14px}
+.row label{flex:1}
+input[type=number],input[type=text]{
+  font:600 15px "Roboto Mono",monospace;text-align:right;width:112px;
+  padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--sumi);
+}
+input[type=text]{font-family:inherit;text-align:left;flex:1;width:auto}
+.stat{display:flex;gap:16px;font-size:12.5px;color:var(--ash);margin-top:4px}
+.stat b{display:block;font:700 17px "Roboto Mono",monospace;color:var(--sumi)}
+dialog{border:0;border-radius:14px;padding:18px;width:min(92vw,340px);background:var(--plate);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+dialog::backdrop{background:rgba(27,27,26,.4)}
+dialog .go{width:100%;margin-top:12px;padding:13px;border:0;border-radius:10px;background:var(--tokiwa);color:#fff;font:700 15px inherit;cursor:pointer}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<h1>食費<b>メーター</b></h1>
+
+<div class="today" id="today">
+  <div class="label">きょう使える</div>
+  <div class="big num"><small>¥</small><span id="todayLeft">0</span></div>
+  <div class="sub" id="todaySub">目標を設定してください</div>
+  <div class="bar"><i id="barFill" style="width:0%"></i><span class="pace" id="paceMark" style="left:0%"></span></div>
+</div>
+
+<div class="pad" id="pad"></div>
+
+<section>
+  <div class="head"><h2>きょうの記録</h2><span id="todaySum">¥0</span></div>
+  <ul id="todayList"><li class="empty">まだ記録がありません</li></ul>
+</section>
+
+<section>
+  <div class="head"><h2>この期間</h2><span id="periodRange"></span></div>
+  <div class="stat">
+    <div>使った<b class="num" id="spent">¥0</b></div>
+    <div>残り<b class="num" id="remain">¥0</b></div>
+    <div>1日平均<b class="num" id="avg">¥0</b></div>
+  </div>
+  <div class="chart" id="chart" style="margin-top:14px"></div>
+  <div class="axis"><span id="axisL"></span><span id="axisR"></span></div>
+</section>
+
+<section>
+  <div class="head"><h2>設定</h2><span id="saveState"></span></div>
+  <div class="row"><label for="goal">月の目標額</label><input id="goal" type="number" min="0" step="1000" inputmode="numeric"></div>
+  <div class="row"><label for="startDay">集計の開始日</label><input id="startDay" type="number" min="1" max="28" inputmode="numeric"></div>
+  <div class="row" style="gap:8px;padding-top:12px">
+    <button class="key alt" id="exportBtn" style="flex:1;padding:11px">バックアップを書き出す</button>
+    <button class="key alt" id="importBtn" style="flex:1;padding:11px">読み込む</button>
+  </div>
+  <input type="file" id="importFile" accept="application/json" hidden>
+</section>
+
+<dialog id="freeDlg">
+  <div class="row"><label for="freeAmt">金額</label><input id="freeAmt" type="number" min="0" step="10" inputmode="numeric"></div>
+  <div class="row"><label for="freeMemo">メモ</label><input id="freeMemo" type="text" placeholder="スーパー / 昼食 など"></div>
+  <button class="go" id="freeGo">記録する</button>
+</dialog>
+
+<script>
+/* ---------- 保存層：ここだけ差し替えれば任意の保存先に移せる ---------- */
+const KEY = 'food-budget:v1';
+const store = {
+  async load(){
+    try{
+      if (window.storage){ const r = await window.storage.get(KEY); return r ? JSON.parse(r.value) : null; }
+      const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null;
+    }catch(e){ return null; }
+  },
+  async save(data){
+    const v = JSON.stringify(data);
+    try{
+      if (window.storage) await window.storage.set(KEY, v);
+      else localStorage.setItem(KEY, v);
+    }catch(e){ flash('保存に失敗しました'); }
+  }
+};
+
+/* ---------- 状態 ---------- */
+let state = { goal: 40000, startDay: 1, entries: [] };
+const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
+const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today = () => ymd(new Date());
+
+function period(){
+  const now = new Date(), s = state.startDay;
+  let start = new Date(now.getFullYear(), now.getMonth(), s);
+  if (now.getDate() < s) start = new Date(now.getFullYear(), now.getMonth()-1, s);
+  const end = new Date(start.getFullYear(), start.getMonth()+1, s); // 次期間の初日
+  const total = Math.round((end - start) / 86400000);
+  const passed = Math.round((new Date(now.getFullYear(),now.getMonth(),now.getDate()) - start) / 86400000);
+  return { start, end, total, passed, left: total - passed }; // left は今日を含む残り日数
+}
+
+/* ---------- 描画 ---------- */
+function render(){
+  const p = period();
+  const inP = state.entries.filter(e => e.date >= ymd(p.start) && e.date < ymd(p.end));
+  const spent = inP.reduce((a,e)=>a+e.amount,0);
+  const remain = state.goal - spent;
+  const perDay = p.left > 0 ? remain / p.left : remain;
+  const todays = state.entries.filter(e => e.date === today());
+  const todaySum = todays.reduce((a,e)=>a+e.amount,0);
+  const todayLeft = perDay - todaySum;
+
+  document.getElementById('todayLeft').textContent = Math.round(Math.max(todayLeft,0)).toLocaleString('ja-JP');
+  document.getElementById('today').classList.toggle('over', todayLeft < 0);
+  document.getElementById('todaySub').textContent =
+    todayLeft < 0 ? `きょうの枠を ${yen(-todayLeft)} 超過 ／ 残り${p.left}日`
+                  : `${p.left}日で ${yen(Math.max(remain,0))} ／ 1日あたり ${yen(Math.max(perDay,0))}`;
+
+  const ratio = state.goal > 0 ? Math.min(spent / state.goal, 1) : 0;
+  document.getElementById('barFill').style.width = (ratio*100).toFixed(1) + '%';
+  document.getElementById('paceMark').style.left = ((p.passed / p.total)*100).toFixed(1) + '%';
+
+  document.getElementById('todaySum').textContent = yen(todaySum);
+  const ul = document.getElementById('todayList');
+  ul.innerHTML = todays.length ? '' : '<li class="empty">まだ記録がありません</li>';
+  todays.slice().reverse().forEach(e=>{
+    const li = document.createElement('li');
+    li.innerHTML = `<span>${e.memo || '食費'}</span><span class="amt num">${yen(e.amount)}</span>`;
+    const b = document.createElement('button');
+    b.textContent = '×'; b.title = '削除';
+    b.onclick = () => { state.entries = state.entries.filter(x=>x.id!==e.id); persist(); };
+    li.appendChild(b); ul.appendChild(li);
+  });
+
+  document.getElementById('spent').textContent = yen(spent);
+  document.getElementById('remain').textContent = yen(remain);
+  document.getElementById('avg').textContent = yen(p.passed >= 0 ? spent/(p.passed+1) : 0);
+  document.getElementById('periodRange').textContent =
+    `${p.start.getMonth()+1}/${p.start.getDate()} 〜 ${p.total}日間`;
+
+  // 日別グラフ（期間全日）
+  const byDay = {};
+  inP.forEach(e => byDay[e.date] = (byDay[e.date]||0) + e.amount);
+  const max = Math.max(perDay*1.6, ...Object.values(byDay), 1);
+  const chart = document.getElementById('chart'); chart.innerHTML = '';
+  for(let i=0;i<p.total;i++){
+    const d = new Date(p.start.getFullYear(), p.start.getMonth(), p.start.getDate()+i);
+    const v = byDay[ymd(d)] || 0;
+    const bar = document.createElement('div');
+    bar.style.height = Math.max((v/max)*100, v>0?4:1.5) + '%';
+    if (v > perDay && perDay > 0) bar.classList.add('hi');
+    if (ymd(d) === today()) bar.classList.add('today-b');
+    bar.title = `${d.getMonth()+1}/${d.getDate()} ${yen(v)}`;
+    chart.appendChild(bar);
+  }
+  document.getElementById('axisL').textContent = `${p.start.getMonth()+1}/${p.start.getDate()}`;
+  const last = new Date(p.end.getFullYear(), p.end.getMonth(), p.end.getDate()-1);
+  document.getElementById('axisR').textContent = `${last.getMonth()+1}/${last.getDate()}`;
+}
+
+function persist(){ store.save(state); render(); flash('保存しました'); }
+let flashT;
+function flash(msg){
+  const el = document.getElementById('saveState');
+  el.textContent = msg; clearTimeout(flashT);
+  flashT = setTimeout(()=>el.textContent='', 1600);
+}
+function add(amount, memo=''){
+  if(!amount || amount <= 0) return;
+  state.entries.push({ id: Date.now()+''+Math.random(), date: today(), amount, memo });
+  persist();
+}
+
+/* ---------- 券売機パッド ---------- */
+const PRESETS = [300, 500, 800, 1000, 1500, 2000];
+const pad = document.getElementById('pad');
+PRESETS.forEach(v=>{
+  const b = document.createElement('button');
+  b.className = 'key'; b.textContent = '¥' + v.toLocaleString('ja-JP');
+  b.onclick = () => add(v);
+  pad.appendChild(b);
+});
+const free = document.createElement('button');
+free.className = 'key alt'; free.style.gridColumn = 'span 3'; free.textContent = '金額とメモを入力';
+free.onclick = () => { document.getElementById('freeAmt').value=''; document.getElementById('freeMemo').value=''; document.getElementById('freeDlg').showModal(); document.getElementById('freeAmt').focus(); };
+pad.appendChild(free);
+document.getElementById('freeGo').onclick = () => {
+  add(Number(document.getElementById('freeAmt').value), document.getElementById('freeMemo').value.trim());
+  document.getElementById('freeDlg').close();
+};
+
+/* ---------- 設定 ---------- */
+const goalI = document.getElementById('goal'), startI = document.getElementById('startDay');
+goalI.onchange = () => { state.goal = Math.max(0, Number(goalI.value)||0); persist(); };
+startI.onchange = () => { state.startDay = Math.min(28, Math.max(1, Number(startI.value)||1)); startI.value = state.startDay; persist(); };
+
+/* ---------- バックアップ ---------- */
+document.getElementById('exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `food-budget-${today()}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById('importBtn').onclick = () => document.getElementById('importFile').click();
+document.getElementById('importFile').onchange = async (ev) => {
+  const f = ev.target.files[0]; if(!f) return;
+  try{
+    const d = JSON.parse(await f.text());
+    if(!Array.isArray(d.entries)) throw 0;
+    state = Object.assign(state, d);
+    goalI.value = state.goal; startI.value = state.startDay;
+    persist();
+  }catch(e){ flash('読み込めませんでした'); }
+  ev.target.value = '';
+};
+
+/* ---------- 起動 ---------- */
+(async ()=>{
+  const saved = await store.load();
+  if (saved) state = Object.assign(state, saved);
+  goalI.value = state.goal; startI.value = state.startDay;
+  render();
+
+  // ショートカットから ?add=500&memo=昼食 で1タップ記録
+  const q = new URLSearchParams(location.search);
+  const amt = Number(q.get('add'));
+  if (amt > 0){
+    add(amt, q.get('memo') || '');
+    history.replaceState(null, '', location.pathname);
+  }
+})();
+
+if ('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>
