@@ -29,7 +29,7 @@ html,body{background:var(--paper);color:var(--sumi)}
 body{
   font-family:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
   font-weight:500;line-height:1.5;
-  padding:16px 16px calc(32px + env(safe-area-inset-bottom));
+  padding:calc(16px + env(safe-area-inset-top)) 16px calc(32px + env(safe-area-inset-bottom));
   max-width:520px;margin:0 auto;
 }
 .num{font-family:"Roboto Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
@@ -91,9 +91,10 @@ input[type=number],input[type=text]{
 input[type=text]{font-family:inherit;text-align:left;flex:1;width:auto}
 .stat{display:flex;gap:16px;font-size:12.5px;color:var(--ash);margin-top:4px}
 .stat b{display:block;font:700 17px "Roboto Mono",monospace;color:var(--sumi)}
-dialog{border:0;border-radius:14px;padding:18px;width:min(92vw,340px);background:var(--plate);box-shadow:0 12px 40px rgba(0,0,0,.25)}
-dialog::backdrop{background:rgba(27,27,26,.4)}
-dialog .go{width:100%;margin-top:12px;padding:13px;border:0;border-radius:10px;background:var(--tokiwa);color:#fff;font:700 15px inherit;cursor:pointer}
+.modal-backdrop{position:fixed;inset:0;background:rgba(27,27,26,.4);display:flex;align-items:center;justify-content:center;padding:16px;z-index:100}
+.modal-backdrop[hidden]{display:none}
+.modal{border-radius:14px;padding:18px;width:min(92vw,340px);background:var(--plate);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+.modal .go{width:100%;margin-top:12px;padding:13px;border:0;border-radius:10px;background:var(--tokiwa);color:#fff;font:700 15px inherit;cursor:pointer}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -136,11 +137,13 @@ dialog .go{width:100%;margin-top:12px;padding:13px;border:0;border-radius:10px;b
   <input type="file" id="importFile" accept="application/json" hidden>
 </section>
 
-<dialog id="freeDlg">
-  <div class="row"><label for="freeAmt">金額</label><input id="freeAmt" type="number" min="0" step="10" inputmode="numeric"></div>
-  <div class="row"><label for="freeMemo">メモ</label><input id="freeMemo" type="text" placeholder="スーパー / 昼食 など"></div>
-  <button class="go" id="freeGo">記録する</button>
-</dialog>
+<div id="freeDlg" class="modal-backdrop" hidden>
+  <div class="modal">
+    <div class="row"><label for="freeAmt">金額</label><input id="freeAmt" type="number" min="0" step="10" inputmode="numeric"></div>
+    <div class="row"><label for="freeMemo">メモ</label><input id="freeMemo" type="text" placeholder="スーパー / 昼食 など"></div>
+    <button class="go" id="freeGo">記録する</button>
+  </div>
+</div>
 
 <script>
 /* ---------- 保存層：ここだけ差し替えれば任意の保存先に移せる ---------- */
@@ -260,12 +263,17 @@ PRESETS.forEach(v=>{
 });
 const free = document.createElement('button');
 free.className = 'key alt'; free.style.gridColumn = 'span 3'; free.textContent = '金額とメモを入力';
-free.onclick = () => { document.getElementById('freeAmt').value=''; document.getElementById('freeMemo').value=''; document.getElementById('freeDlg').showModal(); document.getElementById('freeAmt').focus(); };
+const freeDlg = document.getElementById('freeDlg');
+function openModal(){ freeDlg.hidden = false; }
+function closeModal(){ freeDlg.hidden = true; }
+free.onclick = () => { document.getElementById('freeAmt').value=''; document.getElementById('freeMemo').value=''; openModal(); document.getElementById('freeAmt').focus(); };
 pad.appendChild(free);
 document.getElementById('freeGo').onclick = () => {
   add(Number(document.getElementById('freeAmt').value), document.getElementById('freeMemo').value.trim());
-  document.getElementById('freeDlg').close();
+  closeModal();
 };
+freeDlg.addEventListener('click', (ev) => { if (ev.target === freeDlg) closeModal(); });
+document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !freeDlg.hidden) closeModal(); });
 
 /* ---------- 設定 ---------- */
 const goalI = document.getElementById('goal'), startI = document.getElementById('startDay');
