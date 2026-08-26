@@ -3,7 +3,7 @@
   "short_name": "食費",
   "start_url": ".",
   "scope": ".",
-  "display": "standalone",
+  "display": "browser",
   "orientation": "portrait",
   "background_color": "#F1EFE7",
   "theme_color": "#1F6F5C",
