@@ -68,6 +68,7 @@ ul{list-style:none}
 li{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
 li:first-child{border-top:0}
 li .amt{margin-left:auto;font:700 15px "Roboto Mono",monospace}
+li .date{color:var(--ash);font-size:12px;min-width:32px}
 li button{background:none;border:0;color:var(--ash);font-size:17px;cursor:pointer;padding:2px 4px}
 .empty{color:var(--ash);font-size:13px;padding:6px 0}
 
@@ -124,6 +125,10 @@ input[type=text]:not(.numpad){font-family:inherit;text-align:left;flex:1;width:a
   <div class="chart" id="chart" style="margin-top:14px"></div>
   <div class="axis"><span id="axisL"></span><span id="axisR"></span></div>
   <button class="key alt" id="incomeBtn" style="width:100%;margin-top:12px;padding:11px">出張手当を記録</button>
+  <details style="margin-top:12px">
+    <summary style="cursor:pointer;color:var(--ash);font-size:12.5px">この期間の記録を見る・消す</summary>
+    <ul id="periodList" style="margin-top:6px"><li class="empty">記録がありません</li></ul>
+  </details>
 </section>
 
 <section>
@@ -182,6 +187,21 @@ function period(){
 }
 
 /* ---------- 描画 ---------- */
+function renderEntryList(ul, entries, emptyMsg, showDate){
+  ul.innerHTML = entries.length ? '' : `<li class="empty">${emptyMsg}</li>`;
+  entries.forEach(e=>{
+    const li = document.createElement('li');
+    const isIncome = e.type === 'income';
+    const label = e.memo || (isIncome ? '出張手当' : '食費');
+    const amtText = (isIncome ? '+' : '') + yen(e.amount);
+    const dateHtml = showDate ? (()=>{ const [,m,d] = e.date.split('-').map(Number); return `<span class="date">${m}/${d}</span>`; })() : '';
+    li.innerHTML = `${dateHtml}<span>${label}</span><span class="amt num${isIncome ? ' income' : ''}">${amtText}</span>`;
+    const b = document.createElement('button');
+    b.textContent = '×'; b.title = '削除';
+    b.onclick = () => { state.entries = state.entries.filter(x=>x.id!==e.id); persist(); };
+    li.appendChild(b); ul.appendChild(li);
+  });
+}
 function render(){
   const p = period();
   const inP = state.entries.filter(e => e.date >= ymd(p.start) && e.date < ymd(p.end));
@@ -205,19 +225,8 @@ function render(){
   document.getElementById('paceMark').style.left = ((p.passed / p.total)*100).toFixed(1) + '%';
 
   document.getElementById('todaySum').textContent = yen(todaySum);
-  const ul = document.getElementById('todayList');
-  ul.innerHTML = todays.length ? '' : '<li class="empty">まだ記録がありません</li>';
-  todays.slice().reverse().forEach(e=>{
-    const li = document.createElement('li');
-    const isIncome = e.type === 'income';
-    const label = e.memo || (isIncome ? '出張手当' : '食費');
-    const amtText = (isIncome ? '+' : '') + yen(e.amount);
-    li.innerHTML = `<span>${label}</span><span class="amt num${isIncome ? ' income' : ''}">${amtText}</span>`;
-    const b = document.createElement('button');
-    b.textContent = '×'; b.title = '削除';
-    b.onclick = () => { state.entries = state.entries.filter(x=>x.id!==e.id); persist(); };
-    li.appendChild(b); ul.appendChild(li);
-  });
+  renderEntryList(document.getElementById('todayList'), todays.slice().reverse(), 'まだ記録がありません', false);
+  renderEntryList(document.getElementById('periodList'), inP.slice().sort((a,b)=>b.id.localeCompare(a.id)), '記録がありません', true);
 
   document.getElementById('spent').textContent = yen(spent);
   document.getElementById('remain').textContent = yen(remain);
