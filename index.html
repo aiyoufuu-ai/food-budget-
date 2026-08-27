@@ -92,8 +92,6 @@ input[type=text]:not(.numpad){font-family:inherit;text-align:left;flex:1;width:a
 .modal-backdrop[hidden]{display:none}
 .modal{border-radius:14px;padding:18px;width:min(92vw,340px);background:var(--plate);box-shadow:0 12px 40px rgba(0,0,0,.25)}
 .modal .go{width:100%;margin-top:12px;padding:13px;border:0;border-radius:10px;background:var(--tokiwa);color:#fff;font:700 15px inherit;cursor:pointer}
-.seg{flex:1;padding:9px}
-.seg.active{background:var(--tokiwa);color:#fff}
 .amt.income{color:var(--tokiwa)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -125,6 +123,7 @@ input[type=text]:not(.numpad){font-family:inherit;text-align:left;flex:1;width:a
   </div>
   <div class="chart" id="chart" style="margin-top:14px"></div>
   <div class="axis"><span id="axisL"></span><span id="axisR"></span></div>
+  <button class="key alt" id="incomeBtn" style="width:100%;margin-top:12px;padding:11px">出張手当を記録</button>
 </section>
 
 <section>
@@ -140,10 +139,7 @@ input[type=text]:not(.numpad){font-family:inherit;text-align:left;flex:1;width:a
 
 <div id="freeDlg" class="modal-backdrop" hidden>
   <div class="modal">
-    <div class="row" style="gap:8px">
-      <button type="button" class="key alt seg active" id="typeExpense" data-type="expense">支出</button>
-      <button type="button" class="key alt seg" id="typeIncome" data-type="income">出張手当</button>
-    </div>
+    <div class="row"><b id="freeTitle">支出を記録</b></div>
     <div class="row"><label for="freeAmt">金額</label><input id="freeAmt" class="numpad" type="text" inputmode="numeric" pattern="[0-9]*"></div>
     <div class="row"><label for="freeMemo">メモ</label><input id="freeMemo" type="text" placeholder="スーパー / 昼食 など"></div>
     <button class="go" id="freeGo">記録する</button>
@@ -275,19 +271,24 @@ PRESETS.forEach(v=>{
 const free = document.createElement('button');
 free.className = 'key alt'; free.style.gridColumn = 'span 3'; free.textContent = '金額とメモを入力';
 const freeDlg = document.getElementById('freeDlg');
+const freeTitle = document.getElementById('freeTitle');
 function openModal(){ freeDlg.hidden = false; }
 function closeModal(){ freeDlg.hidden = true; }
 let freeType = 'expense';
-const typeExpense = document.getElementById('typeExpense'), typeIncome = document.getElementById('typeIncome');
 function setFreeType(t){
   freeType = t;
-  typeExpense.classList.toggle('active', t === 'expense');
-  typeIncome.classList.toggle('active', t === 'income');
+  freeTitle.textContent = t === 'income' ? '出張手当を記録' : '支出を記録';
 }
-typeExpense.onclick = () => setFreeType('expense');
-typeIncome.onclick = () => setFreeType('income');
-free.onclick = () => { document.getElementById('freeAmt').value=''; document.getElementById('freeMemo').value=''; setFreeType('expense'); openModal(); document.getElementById('freeAmt').focus(); };
+function openFreeDlg(type){
+  document.getElementById('freeAmt').value = '';
+  document.getElementById('freeMemo').value = '';
+  setFreeType(type);
+  openModal();
+  document.getElementById('freeAmt').focus();
+}
+free.onclick = () => openFreeDlg('expense');
 pad.appendChild(free);
+document.getElementById('incomeBtn').onclick = () => openFreeDlg('income');
 document.getElementById('freeGo').onclick = () => {
   add(Number(document.getElementById('freeAmt').value), document.getElementById('freeMemo').value.trim(), freeType);
   closeModal();
