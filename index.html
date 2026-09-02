@@ -50,6 +50,7 @@ h1 b{color:var(--sumi)}
 
 /* 券売機パッド */
 .pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.pad2{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px}
 .key{
   background:var(--plate);border:1px solid var(--line);border-radius:12px;
   box-shadow:var(--shadow);padding:14px 6px;font:700 19px/1 "Roboto Mono",monospace;
@@ -132,6 +133,12 @@ input[type=text]:not(.numpad){font-family:inherit;text-align:left;flex:1;width:a
 </section>
 
 <section>
+  <div class="head"><h2>タバコ</h2><span id="tobaccoSum">¥0</span></div>
+  <div class="pad2" id="tobaccoPad"></div>
+  <ul id="tobaccoList"><li class="empty">まだ記録がありません</li></ul>
+</section>
+
+<section>
   <div class="head"><h2>設定</h2><span id="saveState"></span></div>
   <div class="row"><label for="goal">月の目標額</label><input id="goal" class="numpad" type="text" inputmode="numeric" pattern="[0-9]*"></div>
   <div class="row"><label for="startDay">集計の開始日</label><input id="startDay" class="numpad" type="text" inputmode="numeric" pattern="[0-9]*"></div>
@@ -171,7 +178,7 @@ const store = {
 };
 
 /* ---------- 状態 ---------- */
-let state = { goal: 40000, startDay: 1, entries: [] };
+let state = { goal: 40000, startDay: 1, entries: [], tobacco: { entries: [] } };
 const yen = n => '¥' + Math.round(n).toLocaleString('ja-JP');
 const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const today = () => ymd(new Date());
@@ -187,18 +194,18 @@ function period(){
 }
 
 /* ---------- 描画 ---------- */
-function renderEntryList(ul, entries, emptyMsg, showDate){
+function renderEntryList(ul, entries, emptyMsg, showDate, defaultLabel, onDelete){
   ul.innerHTML = entries.length ? '' : `<li class="empty">${emptyMsg}</li>`;
   entries.forEach(e=>{
     const li = document.createElement('li');
     const isIncome = e.type === 'income';
-    const label = e.memo || (isIncome ? '出張手当' : '食費');
+    const label = e.memo || (isIncome ? '出張手当' : defaultLabel);
     const amtText = (isIncome ? '+' : '') + yen(e.amount);
     const dateHtml = showDate ? (()=>{ const [,m,d] = e.date.split('-').map(Number); return `<span class="date">${m}/${d}</span>`; })() : '';
     li.innerHTML = `${dateHtml}<span>${label}</span><span class="amt num${isIncome ? ' income' : ''}">${amtText}</span>`;
     const b = document.createElement('button');
     b.textContent = '×'; b.title = '削除';
-    b.onclick = () => { state.entries = state.entries.filter(x=>x.id!==e.id); persist(); };
+    b.onclick = () => { onDelete(e.id); persist(); };
     li.appendChild(b); ul.appendChild(li);
   });
 }
@@ -226,8 +233,9 @@ function render(){
   document.getElementById('paceMark').style.left = ((p.passed / p.total)*100).toFixed(1) + '%';
 
   document.getElementById('todaySum').textContent = yen(todaySum);
-  renderEntryList(document.getElementById('todayList'), todays.slice().reverse(), 'まだ記録がありません', false);
-  renderEntryList(document.getElementById('periodList'), inP.slice().sort((a,b)=>b.id.localeCompare(a.id)), '記録がありません', true);
+  const delFood = id => { state.entries = state.entries.filter(x=>x.id!==id); };
+  renderEntryList(document.getElementById('todayList'), todays.slice().reverse(), 'まだ記録がありません', false, '食費', delFood);
+  renderEntryList(document.getElementById('periodList'), inP.slice().sort((a,b)=>b.id.localeCompare(a.id)), '記録がありません', true, '食費', delFood);
 
   document.getElementById('spent').textContent = yen(spent);
   document.getElementById('remain').textContent = yen(remain);
@@ -254,6 +262,12 @@ function render(){
   document.getElementById('axisL').textContent = `${p.start.getMonth()+1}/${p.start.getDate()}`;
   const last = new Date(p.end.getFullYear(), p.end.getMonth(), p.end.getDate()-1);
   document.getElementById('axisR').textContent = `${last.getMonth()+1}/${last.getDate()}`;
+
+  // タバコ（食費とは完全に独立した集計・表示）
+  const tobaccoInP = state.tobacco.entries.filter(e => e.date >= ymd(p.start) && e.date < ymd(p.end));
+  document.getElementById('tobaccoSum').textContent = yen(tobaccoInP.reduce((a,e)=>a+e.amount,0));
+  renderEntryList(document.getElementById('tobaccoList'), tobaccoInP.slice().sort((a,b)=>b.id.localeCompare(a.id)), 'まだ記録がありません', true, 'タバコ',
+    id => { state.tobacco.entries = state.tobacco.entries.filter(x=>x.id!==id); });
 }
 
 function persist(){ store.save(state); render(); flash('保存しました'); }
@@ -266,6 +280,11 @@ function flash(msg){
 function add(amount, memo='', type='expense'){
   if(!amount || amount <= 0) return;
   state.entries.push({ id: Date.now()+''+Math.random(), date: today(), amount, memo, type });
+  persist();
+}
+function addTobacco(amount){
+  if(!amount || amount <= 0) return;
+  state.tobacco.entries.push({ id: Date.now()+''+Math.random(), date: today(), amount });
   persist();
 }
 
@@ -305,6 +324,16 @@ document.getElementById('freeGo').onclick = () => {
 };
 freeDlg.addEventListener('click', (ev) => { if (ev.target === freeDlg) closeModal(); });
 document.addEventListener('keydown', (ev) => { if (ev.key === 'Escape' && !freeDlg.hidden) closeModal(); });
+
+/* ---------- タバコ（食費とは別会計） ---------- */
+const TOBACCO_PRESETS = [620, 570];
+const tobaccoPad = document.getElementById('tobaccoPad');
+TOBACCO_PRESETS.forEach(v=>{
+  const b = document.createElement('button');
+  b.className = 'key'; b.textContent = '¥' + v.toLocaleString('ja-JP');
+  b.onclick = () => addTobacco(v);
+  tobaccoPad.appendChild(b);
+});
 
 /* ---------- 設定 ---------- */
 const goalI = document.getElementById('goal'), startI = document.getElementById('startDay');
